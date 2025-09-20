@@ -1,4 +1,3 @@
--- ✅ Full Script dengan Mob Vacuum, Notifier, Anti Knockback, Anti Stun, Auto Parry & Mobile UI
 -- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -6,10 +5,9 @@ local UIS = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local StarterGui = game:GetService("StarterGui")
-
 local player = Players.LocalPlayer
 
--- 🔔 Notifier Function
+-- 🔔 Notifier
 local function notify(msg)
     StarterGui:SetCore("SendNotification", {
         Title = "Script Notifier",
@@ -19,410 +17,271 @@ local function notify(msg)
     print(msg)
 end
 
--- Remotes
-local remotes = ReplicatedStorage:WaitForChild("remotes")
-local onHit = remotes:WaitForChild("onHit")
-local abilityHit = remotes:WaitForChild("abilityHit")
-local swing = remotes:WaitForChild("swing")
-local useBuff = ReplicatedStorage.remotes:WaitForChild("useAbility")
-local parryRemote = ReplicatedStorage.remotes:WaitForChild("parry")
+-- 🔹 Inisialisasi Variabel Global
+_G.active = false
+_G.godMode = true
+_G.instakill = false
+_G.vacuumActive = false
+_G.autoParry = false
+_G.speedBoost = false
+_G.proteksi = true
 
--- Kirim request ke server (contoh buff)
-useBuff:FireServer("LifeSteal1")
-
--- Pengaturan
-local active = false
-local instakill = false
 local damagePerHit = 2
-local behindDistance = -5
-local heightOffset = 0
-local maxDistance = 100
-local lerpSpeed = 0.1
-
-local godMode = true
-local maxHealthValue = math.huge
-
--- Mob Vacuum
-local vacuumActive = false
-local vacuumRadius = 100
-local vacuumMinDistance = 5
-local vacuumSpeed = 0.2
-
--- SPEED BOOST
-local speedBoost = false
-local originalWalkSpeed = 16
 local boostedWalkSpeed = 50
+local originalWalkSpeed = 16
 local speedJumpPower = 75
 local originalJumpPower = 50
 
--- Auto Parry
-local autoParry = false
-
--- Proteksi
-local antiKnockback = true
-local antiStun = true
-
--- Daftar musuh dikecualikan
-local excludedEnemies = {
-    ["Blender"] = true,
-    ["Dummy"] = true,
-}
-
 --------------------------------------------------------
--- 🚀 FUNGSI: Speed Boost
+-- 📦 UI Setup
 --------------------------------------------------------
-local function applySpeedBoost()
-    local char = player.Character
-    if not char then return end
-    local humanoid = char:FindFirstChildOfClass("Humanoid")
-    if not humanoid then return end
-    
-    if speedBoost then
-        if humanoid:GetAttribute("OriginalWalkSpeed") == nil then
-            humanoid:SetAttribute("OriginalWalkSpeed", humanoid.WalkSpeed)
-            humanoid:SetAttribute("OriginalJumpPower", humanoid.JumpPower)
-        end
-        humanoid.WalkSpeed = boostedWalkSpeed
-        humanoid.JumpPower = speedJumpPower
-    else
-        humanoid.WalkSpeed = humanoid:GetAttribute("OriginalWalkSpeed") or originalWalkSpeed
-        humanoid.JumpPower = humanoid:GetAttribute("OriginalJumpPower") or originalJumpPower
-    end
-end
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "CheatUI"
+ScreenGui.Parent = game.CoreGui
 
-local function toggleSpeedBoost()
-    speedBoost = not speedBoost
-    applySpeedBoost()
-    notify(speedBoost and "🚀 Speed Boost AKTIF (" .. boostedWalkSpeed .. ")" or "🐢 Speed Boost NONAKTIF")
-end
-
-local function changeSpeedValue(increase)
-    if increase then
-        boostedWalkSpeed = math.min(boostedWalkSpeed + 10, 100)
-    else
-        boostedWalkSpeed = math.max(boostedWalkSpeed - 10, 20)
-    end
-    if speedBoost then
-        applySpeedBoost()
-    end
-    notify("🏃‍♂️ Kecepatan: " .. boostedWalkSpeed .. " studs/sec")
-end
-
---------------------------------------------------------
--- 💎 God Mode
---------------------------------------------------------
-local function enableGodMode()
-    local char = player.Character or player.CharacterAdded:Wait()
-    local hum = char:WaitForChild("Humanoid")
-    hum.MaxHealth = maxHealthValue
-    hum.Health = maxHealthValue
-    hum.HealthChanged:Connect(function()
-        if godMode and hum.Health < hum.MaxHealth then
-            hum.Health = hum.MaxHealth
-        end
-    end)
-end
-
---------------------------------------------------------
--- 🛡 Anti Knockback
---------------------------------------------------------
-local function enableAntiKnockback()
-    local char = player.Character or player.CharacterAdded:Wait()
-    local hrp = char:WaitForChild("HumanoidRootPart")
-    hrp.ChildAdded:Connect(function(child)
-        if antiKnockback and (child:IsA("BodyVelocity") or child:IsA("VectorForce") or child:IsA("LinearVelocity")) then
-            child:Destroy()
-            print("🚫 Knockback diblokir:", child.ClassName)
-        end
-    end)
-end
-
---------------------------------------------------------
--- 🚫 Anti Stun
---------------------------------------------------------
-local function enableAntiStun()
-    local char = player.Character or player.CharacterAdded:Wait()
-    local hum = char:WaitForChild("Humanoid")
-
-    hum:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
-        if antiStun and hum.WalkSpeed == 0 then
-            hum.WalkSpeed = originalWalkSpeed
-            print("🚫 Stun WalkSpeed direset")
-        end
-    end)
-
-    hum:GetPropertyChangedSignal("JumpPower"):Connect(function()
-        if antiStun and hum.JumpPower == 0 then
-            hum.JumpPower = originalJumpPower
-            print("🚫 Stun JumpPower direset")
-        end
-    end)
-
-    char.DescendantAdded:Connect(function(obj)
-        if antiStun and obj.Name:lower():find("stun") then
-            obj:Destroy()
-            print("🚫 Efek stun dihancurkan:", obj.Name)
-        end
-    end)
-
-    RunService.RenderStepped:Connect(function()
-        if antiStun then
-            for _, state in pairs(Enum.HumanoidStateType:GetEnumItems()) do
-                hum:SetStateEnabled(state, true)
-            end
-        end
-    end)
-end
-
---------------------------------------------------------
--- ⚔ Fungsi Attack
---------------------------------------------------------
-local function attackTarget(humanoid)
-    if not humanoid or humanoid.Health <= 0 then return end
-    local damage = instakill and math.huge or damagePerHit
-    swing:FireServer()
-    task.wait(0.05)
-    onHit:FireServer(humanoid, damage)
-    abilityHit:FireServer(humanoid, damage, {["burn"] = {["dur"] = 1}})
-    print("⚔ Hit:", humanoid.Parent.Name, "| Damage:", damage, "| Sisa HP:", humanoid.Health)
-end
-
--- KillAll
-function killAll()
-    for _,v in pairs(Workspace:GetChildren()) do
-        local hum = v:FindFirstChildOfClass("Humanoid")
-        local hrp = v:FindFirstChild("HumanoidRootPart")
-        if hum and hrp and hum.Health > 0 and v ~= player.Character then
-            if not excludedEnemies[v.Name] then
-                attackTarget(hum)
-            end
-        end
-    end
-end
-
---------------------------------------------------------
--- HRP Getter
---------------------------------------------------------
-local function getCharacterHRP()
-    local char = player.Character or player.CharacterAdded:Wait()
-    return char:WaitForChild("HumanoidRootPart")
-end
-
--- Cari musuh terdekat
-local function getNearestEnemy()
-    local charHRP = getCharacterHRP()
-    local nearest, nearestDist
-    for _, obj in pairs(Workspace:GetChildren()) do
-        local hum = obj:FindFirstChildOfClass("Humanoid")
-        local hrp = obj:FindFirstChild("HumanoidRootPart")
-        if hum and hrp and hum.Health > 0 and obj ~= player.Character then
-            if not excludedEnemies[obj.Name] then
-                local dist = (hrp.Position - charHRP.Position).Magnitude
-                if not nearest or dist < nearestDist then
-                    nearest, nearestDist = hrp, dist
-                end
-            end
-        end
-    end
-    return nearest
-end
-
---------------------------------------------------------
--- Auto Nempel Musuh
---------------------------------------------------------
-RunService.RenderStepped:Connect(function()
-    if not active then return end
-    local charHRP = getCharacterHRP()
-    local enemyHRP = getNearestEnemy()
-    if charHRP and enemyHRP then
-        local enemyLook = enemyHRP.CFrame.LookVector
-        local targetPos = enemyHRP.Position + (enemyLook * behindDistance)
-        targetPos = targetPos + Vector3.new(0, heightOffset, 0)
-        local distance = (targetPos - charHRP.Position).Magnitude
-        if distance <= maxDistance then
-            local newPos = charHRP.Position:Lerp(targetPos, lerpSpeed)
-            charHRP.CFrame = CFrame.new(newPos, Vector3.new(enemyHRP.Position.X, newPos.Y, enemyHRP.Position.Z))
-        end
-    end
-end)
-
---------------------------------------------------------
--- Mob Vacuum
---------------------------------------------------------
-RunService.RenderStepped:Connect(function()
-    if not vacuumActive then return end
-    local charHRP = getCharacterHRP()
-    for _, obj in pairs(Workspace:GetChildren()) do
-        local hum = obj:FindFirstChildOfClass("Humanoid")
-        local hrp = obj:FindFirstChild("HumanoidRootPart")
-        if hum and hrp and hum.Health > 0 and obj ~= player.Character then
-            if not excludedEnemies[obj.Name] then
-                local dist = (hrp.Position - charHRP.Position).Magnitude
-                if dist <= vacuumRadius and dist > vacuumMinDistance then
-                    local newPos = hrp.Position:Lerp(charHRP.Position, vacuumSpeed)
-                    hrp.CFrame = CFrame.new(newPos.X, charHRP.Position.Y, newPos.Z)
-                    hum.AutoRotate = false
-                end
-            end
-        end
-    end
-end)
-
---------------------------------------------------------
--- Auto Parry
---------------------------------------------------------
-RunService.RenderStepped:Connect(function()
-    if autoParry and parryRemote then
-        pcall(function()
-            parryRemote:FireServer()
-        end)
-    end
-end)
-
---------------------------------------------------------
--- Aktifkan saat spawn
---------------------------------------------------------
-player.CharacterAdded:Connect(function()
-    task.wait(1)
-    if godMode then enableGodMode() end
-    enableAntiKnockback()
-    enableAntiStun()
-    if speedBoost then applySpeedBoost() end
-end)
-
-if player.Character then
-    if godMode then enableGodMode() end
-    enableAntiKnockback()
-    enableAntiStun()
-    if speedBoost then applySpeedBoost() end
-end
-
---------------------------------------------------------
--- 🎹 Hotkeys PC
---------------------------------------------------------
-UIS.InputBegan:Connect(function(input, gpe)
-    if gpe then return end
-
-    if input.KeyCode == Enum.KeyCode.T then
-        active = not active
-        notify(active and "🎯 Auto Nempel AKTIF" or "🛑 Auto Nempel MATI")
-    elseif input.KeyCode == Enum.KeyCode.G then
-        godMode = not godMode
-        notify(godMode and "💎 God Mode ON" or "❌ God Mode OFF")
-        if godMode then enableGodMode() end
-    elseif input.KeyCode == Enum.KeyCode.Z then
-        notify("🚀 KillAll manual dijalankan...")
-        killAll()
-    elseif input.KeyCode == Enum.KeyCode.K then
-        instakill = not instakill
-        notify(instakill and "☠ Instakill Mode ON" or "⚔ Normal Damage Mode ON")
-    elseif input.KeyCode == Enum.KeyCode.V then
-        vacuumActive = not vacuumActive
-        notify(vacuumActive and "🌀 Mob Vacuum AKTIF" or "❌ Mob Vacuum MATI")
-    elseif input.KeyCode == Enum.KeyCode.P then
-        toggleSpeedBoost()
-    elseif input.KeyCode == Enum.KeyCode.Equals then
-        changeSpeedValue(true)
-    elseif input.KeyCode == Enum.KeyCode.Minus then
-        changeSpeedValue(false)
-    elseif input.KeyCode == Enum.KeyCode.N then
-        autoParry = not autoParry
-        notify(autoParry and "⚡ Auto Parry AKTIF" or "❌ Auto Parry MATI")
-    elseif input.KeyCode == Enum.KeyCode.B then
-        antiKnockback = not antiKnockback
-        antiStun = not antiStun
-        notify((antiKnockback and antiStun) and "🛡 Proteksi ON" or "❌ Proteksi OFF")
-    end
-end)
-
---------------------------------------------------------
--- 📱 MOBILE UI TOGGLE
---------------------------------------------------------
-local screenGui = Instance.new("ScreenGui", player.PlayerGui)
-screenGui.Name = "MobileController"
-
--- Frame menu
-local menuFrame = Instance.new("Frame")
-menuFrame.Size = UDim2.new(0, 300, 0, 200)
-menuFrame.Position = UDim2.new(1, -320, 1, -220)
-menuFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-menuFrame.BackgroundTransparency = 0.2
-menuFrame.Visible = false
-menuFrame.Parent = screenGui
-
--- Tombol toggle
+-- Tombol Toggle Menu
 local toggleBtn = Instance.new("TextButton")
-toggleBtn.Size = UDim2.new(0, 50, 0, 50)
-toggleBtn.Position = UDim2.new(1, -60, 1, -60)
-toggleBtn.Text = "≡"
+toggleBtn.Name = "MenuToggle"
+toggleBtn.Size = UDim2.new(0, 80, 0, 30)
+toggleBtn.Position = UDim2.new(0, 10, 0, 10)
 toggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-toggleBtn.Parent = screenGui
+toggleBtn.Font = Enum.Font.SourceSansBold
+toggleBtn.TextSize = 18
+toggleBtn.Text = "⚙ Menu"
+toggleBtn.Parent = ScreenGui
+toggleBtn.Active = true
+toggleBtn.Draggable = true -- bisa geser
 
-local menuOpen = false
-toggleBtn.MouseButton1Click:Connect(function()
-    menuOpen = not menuOpen
-    menuFrame.Visible = menuOpen
-    toggleBtn.Text = menuOpen and "✕" or "≡"
-end)
+local btnCorner = Instance.new("UICorner", toggleBtn)
+btnCorner.CornerRadius = UDim.new(0, 8)
 
--- Fungsi buat tombol menu
-local function createMenuButton(name, text, pos, callback)
+-- Frame Menu Utama
+local menuFrame = Instance.new("Frame")
+menuFrame.Size = UDim2.new(0, 200, 0, 350)
+menuFrame.Position = UDim2.new(0, 100, 0.5, -175)
+menuFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+menuFrame.Active = true
+menuFrame.Draggable = true
+menuFrame.Visible = false
+menuFrame.Parent = ScreenGui
+
+local UICorner = Instance.new("UICorner", menuFrame)
+UICorner.CornerRadius = UDim.new(0, 10)
+
+local UIListLayout = Instance.new("UIListLayout", menuFrame)
+UIListLayout.Padding = UDim.new(0, 5)
+UIListLayout.FillDirection = Enum.FillDirection.Vertical
+UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+
+local title = Instance.new("TextLabel")
+title.Text = "📜 Cheat Menu"
+title.Size = UDim2.new(1, 0, 0, 30)
+title.BackgroundTransparency = 1
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Font = Enum.Font.SourceSansBold
+title.TextSize = 20
+title.Parent = menuFrame
+
+local BUTTON_SIZE = UDim2.new(0.9, 0, 0, 30)
+
+--------------------------------------------------------
+-- 🔘 Fungsi Toggle Button
+--------------------------------------------------------
+local function makeToggle(name, textOn, textOff, stateVarName, callbackOn, callbackOff)
     local btn = Instance.new("TextButton")
     btn.Name = name
-    btn.Text = text
-    btn.Size = UDim2.new(0, 120, 0, 40)
-    btn.Position = pos
-    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Size = BUTTON_SIZE
+    btn.Text = textOff
+    btn.Font = Enum.Font.SourceSans
+    btn.TextSize = 18
+    btn.AutoButtonColor = false
+    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    btn.TextColor3 = Color3.fromRGB(255,255,255)
     btn.Parent = menuFrame
-    btn.MouseButton1Click:Connect(callback)
+    btn.ZIndex = 5
+
+    local corner = Instance.new("UICorner", btn)
+    corner.CornerRadius = UDim.new(0, 8)
+
+    local state = _G[stateVarName] or false
+
+    local function updateVisual()
+        if state then
+            btn.Text = textOn
+            btn.BackgroundColor3 = Color3.fromRGB(40, 180, 90)
+        else
+            btn.Text = textOff
+            btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        end
+    end
+    updateVisual()
+
+    btn.MouseButton1Click:Connect(function()
+        state = not state
+        _G[stateVarName] = state
+        updateVisual()
+        if state then
+            if callbackOn then pcall(callbackOn) end
+        else
+            if callbackOff then pcall(callbackOff) end
+        end
+    end)
+
     return btn
 end
 
--- Tombol menu mobile
-createMenuButton("AutoNempel", "🎯 Auto Nempel", UDim2.new(0, 10, 0, 10), function()
-    active = not active
-    notify(active and "🎯 Auto Nempel AKTIF" or "🛑 Auto Nempel MATI")
+--------------------------------------------------------
+-- 🔘 Fungsi Tombol Sekali Jalan
+--------------------------------------------------------
+local function makeButton(name, text, callback)
+    local btn = Instance.new("TextButton")
+    btn.Name = name
+    btn.Size = BUTTON_SIZE
+    btn.Text = text
+    btn.Font = Enum.Font.SourceSans
+    btn.TextSize = 18
+    btn.BackgroundColor3 = Color3.fromRGB(100, 100, 150)
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Parent = menuFrame
+
+    local corner = Instance.new("UICorner", btn)
+    corner.CornerRadius = UDim.new(0, 8)
+
+    btn.MouseButton1Click:Connect(function()
+        if callback then pcall(callback) end
+    end)
+
+    return btn
+end
+
+--------------------------------------------------------
+-- 🔹 Slider untuk SpeedBoost
+--------------------------------------------------------
+local function makeSlider(name, text, minVal, maxVal, initialVal, callback)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0.9, 0, 0, 40)
+    frame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    frame.Parent = menuFrame
+
+    local corner = Instance.new("UICorner", frame)
+    corner.CornerRadius = UDim.new(0, 8)
+
+    local label = Instance.new("TextLabel")
+    label.Text = text.." : "..initialVal
+    label.Size = UDim2.new(1, -10, 0, 20)
+    label.Position = UDim2.new(0, 5, 0, 0)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = Color3.fromRGB(255,255,255)
+    label.Font = Enum.Font.SourceSans
+    label.TextSize = 16
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = frame
+
+    -- Bar Background
+    local barBg = Instance.new("Frame")
+    barBg.Size = UDim2.new(1, -10, 0, 8)
+    barBg.Position = UDim2.new(0,5,0,28)
+    barBg.BackgroundColor3 = Color3.fromRGB(100,100,100)
+    barBg.Parent = frame
+    local barCorner = Instance.new("UICorner", barBg)
+    barCorner.CornerRadius = UDim.new(0,4)
+
+    -- Fill
+    local barFill = Instance.new("Frame")
+    barFill.Size = UDim2.new((initialVal-20)/(100-20),0,1,0)
+    barFill.BackgroundColor3 = Color3.fromRGB(40,180,90)
+    barFill.Parent = barBg
+    local fillCorner = Instance.new("UICorner", barFill)
+    fillCorner.CornerRadius = UDim.new(0,4)
+
+    -- Drag logic
+    local dragging = false
+
+    barBg.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+        end
+    end)
+
+    barBg.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+
+    UIS.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local relativeX = math.clamp(input.Position.X - barBg.AbsolutePosition.X, 0, barBg.AbsoluteSize.X)
+            local ratio = relativeX / barBg.AbsoluteSize.X
+            local value = math.floor(minVal + ratio * (maxVal - minVal))
+            barFill.Size = UDim2.new(ratio,0,1,0)
+            label.Text = text.." : "..value
+            if callback then pcall(callback, value) end
+        end
+    end)
+
+    return frame
+end
+
+--------------------------------------------------------
+-- Toggle Show/Hide Menu
+--------------------------------------------------------
+local menuVisible = false
+toggleBtn.MouseButton1Click:Connect(function()
+    menuVisible = not menuVisible
+    menuFrame.Visible = menuVisible
 end)
 
-createMenuButton("KillAll", "☠ KillAll", UDim2.new(0, 150, 0, 10), function()
+--------------------------------------------------------
+-- 📌 Daftar Toggle
+--------------------------------------------------------
+makeToggle("AutoNempelBtn", "🎯 AutoNempel ON", "🎯 AutoNempel OFF", "active",
+    function() notify("🎯 Auto Nempel AKTIF") end,
+    function() notify("🛑 Auto Nempel MATI") end
+)
+
+makeToggle("GodModeBtn", "💎 GodMode ON", "💎 GodMode OFF", "godMode",
+    function() enableGodMode(); notify("💎 God Mode ON") end,
+    function() notify("❌ God Mode OFF") end
+)
+
+makeToggle("InstakillBtn", "☠ Instakill ON", "☠ Instakill OFF", "instakill",
+    function() notify("☠ Instakill Mode ON") end,
+    function() notify("⚔ Normal Damage Mode ON") end
+)
+
+makeToggle("VacuumBtn", "🌀 Vacuum ON", "🌀 Vacuum OFF", "vacuumActive",
+    function() notify("🌀 Mob Vacuum AKTIF") end,
+    function() notify("❌ Mob Vacuum MATI") end
+)
+
+makeToggle("AutoParryBtn", "⚡ Parry ON", "⚡ Parry OFF", "autoParry",
+    function() notify("⚡ Auto Parry AKTIF") end,
+    function() notify("❌ Auto Parry MATI") end
+)
+
+makeToggle("SpeedBtn", "🚀 Speed ON", "🚀 Speed OFF", "speedBoost",
+    function() applySpeedBoost(); notify("🚀 Speed Boost AKTIF") end,
+    function() applySpeedBoost(); notify("🐢 Speed Boost NONAKTIF") end
+)
+
+makeToggle("ProteksiBtn", "🛡 Proteksi ON", "🛡 Proteksi OFF", "proteksi",
+    function() antiKnockback, antiStun = true, true; notify("🛡 Proteksi ON") end,
+    function() antiKnockback, antiStun = false, false; notify("❌ Proteksi OFF") end
+)
+
+-- Tombol Sekali Jalan
+makeButton("KillAllBtn", "☠ KillAll", function()
     notify("🚀 KillAll manual dijalankan...")
     killAll()
 end)
 
-createMenuButton("GodMode", "💎 GodMode", UDim2.new(0, 10, 0, 60), function()
-    godMode = not godMode
-    notify(godMode and "💎 God Mode ON" or "❌ God Mode OFF")
-    if godMode then enableGodMode() end
+-- Slider SpeedBoost
+makeSlider("SpeedSlider", "SpeedBoost", 20, 100, boostedWalkSpeed, function(val)
+    boostedWalkSpeed = val
+    if _G.speedBoost then
+        applySpeedBoost() -- langsung update
+    end
 end)
-
-createMenuButton("Instakill", "☠ Instakill", UDim2.new(0, 150, 0, 60), function()
-    instakill = not instakill
-    notify(instakill and "☠ Instakill Mode ON" or "⚔ Normal Damage Mode ON")
-end)
-
-createMenuButton("Vacuum", "🌀 Vacuum", UDim2.new(0, 10, 0, 110), function()
-    vacuumActive = not vacuumActive
-    notify(vacuumActive and "🌀 Mob Vacuum AKTIF" or "❌ Mob Vacuum MATI")
-end)
-
-createMenuButton("Parry", "⚡ Auto Parry", UDim2.new(0, 150, 0, 110), function()
-    autoParry = not autoParry
-    notify(autoParry and "⚡ Auto Parry AKTIF" or "❌ Auto Parry MATI")
-end)
-
-createMenuButton("Speed", "🚀 Speed", UDim2.new(0, 10, 0, 160), function()
-    toggleSpeedBoost()
-end)
-
-createMenuButton("Proteksi", "🛡 Proteksi", UDim2.new(0, 150, 0, 160), function()
-    antiKnockback = not antiKnockback
-    antiStun = not antiStun
-    notify((antiKnockback and antiStun) and "🛡 Proteksi ON" or "❌ Proteksi OFF")
-end)
-
---------------------------------------------------------
--- ✅ Info Awal
---------------------------------------------------------
-notify("✅ Script siap. PC: [T]=AutoNempel, [Z]=KillAll, [G]=GodMode, [K]=Instakill, [V]=Vacuum, [N]=Auto Parry, [B]=Proteksi, [P]=SpeedBoost. Mobile: pakai menu ≡")
