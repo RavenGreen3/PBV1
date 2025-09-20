@@ -20,166 +20,106 @@ local swing = remotes:WaitForChild("swing")
 local useBuff = remotes:WaitForChild("useAbility")
 local parryRemote = remotes:WaitForChild("parry")
 
--- Buff contoh
 useBuff:FireServer("LifeSteal1")
 
 -- Global Vars
-_G.active = false
-_G.godMode = true
-_G.instakill = false
-_G.vacuumActive = false
-_G.autoParry = false
-_G.speedBoost = false
-_G.proteksi = true
+_G.active=false; _G.godMode=true; _G.instakill=false
+_G.vacuumActive=false; _G.autoParry=false; _G.speedBoost=false; _G.proteksi=true
 
-local damagePerHit = 2
-local boostedWalkSpeed = 50
-local originalWalkSpeed = 16
-local speedJumpPower = 75
-local originalJumpPower = 50
-local maxHealthValue = math.huge
-local vacuumRadius = 100
-local vacuumMinDistance = 5
-local vacuumSpeed = 0.2
-local behindDistance = -5
-local heightOffset = 0
-local maxDistance = 100
-local lerpSpeed = 0.1
-local excludedEnemies = {["Blender"]=true,["Dummy"]=true}
+local damagePerHit=2; local boostedWalkSpeed=50; local originalWalkSpeed=16
+local speedJumpPower=75; local originalJumpPower=50; local maxHealthValue=math.huge
+local vacuumRadius=100; local vacuumMinDistance=5; local vacuumSpeed=0.2
+local behindDistance=-5; local heightOffset=0; local maxDistance=100; local lerpSpeed=0.1
+local excludedEnemies={["Blender"]=true,["Dummy"]=true}
 
 -- Functions
 local function applySpeedBoost()
-    local char = player.Character
-    if char then
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if hum then
-            if _G.speedBoost then
-                hum.WalkSpeed = boostedWalkSpeed
-                hum.JumpPower = speedJumpPower
-            else
-                hum.WalkSpeed = originalWalkSpeed
-                hum.JumpPower = originalJumpPower
-            end
+    local char=player.Character
+    if char then local hum=char:FindFirstChildOfClass("Humanoid")
+        if hum then hum.WalkSpeed=_G.speedBoost and boostedWalkSpeed or originalWalkSpeed
+            hum.JumpPower=_G.speedBoost and speedJumpPower or originalJumpPower
         end
     end
 end
-
 local function enableGodMode()
-    local char = player.Character or player.CharacterAdded:Wait()
-    local hum = char:WaitForChild("Humanoid")
-    hum.MaxHealth = maxHealthValue
-    hum.Health = maxHealthValue
-    hum.HealthChanged:Connect(function()
-        if _G.godMode and hum.Health < hum.MaxHealth then
-            hum.Health = hum.MaxHealth
-        end
-    end)
+    local char=player.Character or player.CharacterAdded:Wait()
+    local hum=char:WaitForChild("Humanoid")
+    hum.MaxHealth=maxHealthValue
+    hum.Health=maxHealthValue
+    hum.HealthChanged:Connect(function() if _G.godMode and hum.Health<hum.MaxHealth then hum.Health=hum.MaxHealth end end)
 end
-
 local function enableAntiKnockback()
-    local char = player.Character or player.CharacterAdded:Wait()
-    local hrp = char:WaitForChild("HumanoidRootPart")
+    local char=player.Character or player.CharacterAdded:Wait()
+    local hrp=char:WaitForChild("HumanoidRootPart")
     hrp.ChildAdded:Connect(function(child)
-        if _G.proteksi and (child:IsA("BodyVelocity") or child:IsA("VectorForce") or child:IsA("LinearVelocity")) then
-            child:Destroy()
-        end
+        if _G.proteksi and (child:IsA("BodyVelocity") or child:IsA("VectorForce") or child:IsA("LinearVelocity")) then child:Destroy() end
     end)
 end
-
 local function enableAntiStun()
-    local char = player.Character or player.CharacterAdded:Wait()
-    local hum = char:WaitForChild("Humanoid")
-    hum:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
-        if _G.proteksi and hum.WalkSpeed == 0 then
-            hum.WalkSpeed = originalWalkSpeed
-        end
-    end)
-    hum:GetPropertyChangedSignal("JumpPower"):Connect(function()
-        if _G.proteksi and hum.JumpPower == 0 then
-            hum.JumpPower = originalJumpPower
-        end
-    end)
-    char.DescendantAdded:Connect(function(obj)
-        if _G.proteksi and obj.Name:lower():find("stun") then
-            obj:Destroy()
-        end
-    end)
+    local char=player.Character or player.CharacterAdded:Wait()
+    local hum=char:WaitForChild("Humanoid")
+    hum:GetPropertyChangedSignal("WalkSpeed"):Connect(function() if _G.proteksi and hum.WalkSpeed==0 then hum.WalkSpeed=originalWalkSpeed end end)
+    hum:GetPropertyChangedSignal("JumpPower"):Connect(function() if _G.proteksi and hum.JumpPower==0 then hum.JumpPower=originalJumpPower end end)
+    char.DescendantAdded:Connect(function(obj) if _G.proteksi and obj.Name:lower():find("stun") then obj:Destroy() end end)
 end
-
-local function getCharacterHRP()
-    local char = player.Character or player.CharacterAdded:Wait()
-    return char:WaitForChild("HumanoidRootPart")
-end
-
+local function getCharacterHRP() return (player.Character or player.CharacterAdded:Wait()):WaitForChild("HumanoidRootPart") end
 local function getNearestEnemy()
-    local charHRP = getCharacterHRP()
-    local nearest, nearestDist
-    for _, obj in pairs(Workspace:GetChildren()) do
-        local hum = obj:FindFirstChildOfClass("Humanoid")
-        local hrp = obj:FindFirstChild("HumanoidRootPart")
+    local charHRP=getCharacterHRP(); local nearest,nearestDist
+    for _,obj in pairs(Workspace:GetChildren()) do
+        local hum=obj:FindFirstChildOfClass("Humanoid")
+        local hrp=obj:FindFirstChild("HumanoidRootPart")
         if hum and hrp and hum.Health>0 and obj~=player.Character and not excludedEnemies[obj.Name] then
-            local dist = (hrp.Position - charHRP.Position).Magnitude
-            if not nearest or dist < nearestDist then
-                nearest, nearestDist = hrp, dist
-            end
+            local dist=(hrp.Position-charHRP.Position).Magnitude
+            if not nearest or dist<nearestDist then nearest,nearestDist=hrp,dist end
         end
     end
     return nearest
 end
-
 local function attackTarget(humanoid)
     if humanoid and humanoid.Health>0 then
-        local damage = _G.instakill and math.huge or damagePerHit
-        swing:FireServer()
-        task.wait(0.05)
-        onHit:FireServer(humanoid, damage)
-        abilityHit:FireServer(humanoid, damage,{["burn"]={["dur"]=1}})
+        local dmg=_G.instakill and math.huge or damagePerHit
+        swing:FireServer(); task.wait(0.05)
+        onHit:FireServer(humanoid,dmg)
+        abilityHit:FireServer(humanoid,dmg,{["burn"]={["dur"]=1}})
     end
 end
-
 local function killAll()
     for _,v in pairs(Workspace:GetChildren()) do
-        local hum = v:FindFirstChildOfClass("Humanoid")
-        local hrp = v:FindFirstChild("HumanoidRootPart")
-        if hum and hrp and hum.Health>0 and v~=player.Character and not excludedEnemies[v.Name] then
-            attackTarget(hum)
-        end
+        local hum=v:FindFirstChildOfClass("Humanoid")
+        local hrp=v:FindFirstChild("HumanoidRootPart")
+        if hum and hrp and hum.Health>0 and v~=player.Character and not excludedEnemies[v.Name] then attackTarget(hum) end
     end
 end
 
--- RenderStepped Loops
+-- Loops
 RunService.RenderStepped:Connect(function()
-    local charHRP = getCharacterHRP()
-    -- Auto Nempel
+    local charHRP=getCharacterHRP()
     if _G.active then
-        local enemyHRP = getNearestEnemy()
+        local enemyHRP=getNearestEnemy()
         if enemyHRP then
-            local targetPos = enemyHRP.Position + (enemyHRP.CFrame.LookVector*behindDistance) + Vector3.new(0,heightOffset,0)
-            charHRP.CFrame = CFrame.new(charHRP.Position:Lerp(targetPos, lerpSpeed), enemyHRP.Position)
+            local target=enemyHRP.Position+(enemyHRP.CFrame.LookVector*behindDistance)+Vector3.new(0,heightOffset,0)
+            charHRP.CFrame=CFrame.new(charHRP.Position:Lerp(target,lerpSpeed),enemyHRP.Position)
         end
     end
-    -- Vacuum
     if _G.vacuumActive then
         for _,obj in pairs(Workspace:GetChildren()) do
-            local hum = obj:FindFirstChildOfClass("Humanoid")
-            local hrp = obj:FindFirstChild("HumanoidRootPart")
+            local hum=obj:FindFirstChildOfClass("Humanoid")
+            local hrp=obj:FindFirstChild("HumanoidRootPart")
             if hum and hrp and hum.Health>0 and obj~=player.Character and not excludedEnemies[obj.Name] then
-                local dist = (hrp.Position - charHRP.Position).Magnitude
+                local dist=(hrp.Position-charHRP.Position).Magnitude
                 if dist<=vacuumRadius and dist>vacuumMinDistance then
-                    local newPos = hrp.Position:Lerp(charHRP.Position, vacuumSpeed)
-                    hrp.CFrame = CFrame.new(newPos.X,charHRP.Position.Y,newPos.Z)
-                    hum.AutoRotate = false
+                    local newPos=hrp.Position:Lerp(charHRP.Position,vacuumSpeed)
+                    hrp.CFrame=CFrame.new(newPos.X,charHRP.Position.Y,newPos.Z)
+                    hum.AutoRotate=false
                 end
             end
         end
     end
-    -- Auto Parry
     if _G.autoParry then pcall(function() parryRemote:FireServer() end) end
 end)
 
--- Character Setup
+-- Character setup
 local function setupCharacter()
-    local char = player.Character or player.CharacterAdded:Wait()
     applySpeedBoost()
     if _G.godMode then enableGodMode() end
     enableAntiKnockback()
@@ -188,58 +128,34 @@ end
 player.CharacterAdded:Connect(setupCharacter)
 if player.Character then setupCharacter() end
 
--- UI (Draggable + Hide/Show)
-local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
-local toggleBtn = Instance.new("TextButton")
-toggleBtn.Size=UDim2.new(0,80,0,30)
-toggleBtn.Position=UDim2.new(0,10,0,10)
-toggleBtn.Text="⚙ Menu"
-toggleBtn.BackgroundColor3=Color3.fromRGB(50,50,50)
-toggleBtn.TextColor3=Color3.fromRGB(255,255,255)
-toggleBtn.Font=Enum.Font.SourceSansBold
-toggleBtn.TextSize=18
-toggleBtn.Parent=ScreenGui
-toggleBtn.Active=true
-toggleBtn.Draggable=true
+-- ====== Compact UI ======
+local ScreenGui=Instance.new("ScreenGui",game.CoreGui)
+local menuToggle=Instance.new("TextButton",ScreenGui)
+menuToggle.Size=UDim2.new(0,90,0,30); menuToggle.Position=UDim2.new(0,10,0,10)
+menuToggle.Text="⚙ Menu"; menuToggle.Font=Enum.Font.SourceSansBold; menuToggle.TextSize=18
+menuToggle.BackgroundColor3=Color3.fromRGB(50,50,50); menuToggle.TextColor3=Color3.fromRGB(255,255,255)
+menuToggle.Active=true; menuToggle.Draggable=true
 
-local menuFrame = Instance.new("Frame", ScreenGui)
-menuFrame.Size=UDim2.new(0,200,0,350)
-menuFrame.Position=UDim2.new(0,100,0.5,-175)
-menuFrame.BackgroundColor3=Color3.fromRGB(30,30,30)
-menuFrame.Active=true
-menuFrame.Draggable=true
+local menuFrame=Instance.new("Frame",ScreenGui)
+menuFrame.Size=UDim2.new(0,180,0,300); menuFrame.Position=UDim2.new(0,110,0.5,-150)
+menuFrame.BackgroundColor3=Color3.fromRGB(25,25,25); menuFrame.Active=true; menuFrame.Draggable=true
 menuFrame.Visible=false
+local UIListLayout=Instance.new("UIListLayout",menuFrame); UIListLayout.Padding=UDim.new(0,5); UIListLayout.FillDirection=Enum.FillDirection.Vertical; UIListLayout.HorizontalAlignment=Enum.HorizontalAlignment.Center
+menuToggle.MouseButton1Click:Connect(function() menuFrame.Visible=not menuFrame.Visible end)
 
-local UIListLayout=Instance.new("UIListLayout", menuFrame)
-UIListLayout.Padding=UDim.new(0,5)
-UIListLayout.FillDirection=Enum.FillDirection.Vertical
-UIListLayout.HorizontalAlignment=Enum.HorizontalAlignment.Center
-
--- Toggle Menu
-toggleBtn.MouseButton1Click:Connect(function()
-    menuFrame.Visible = not menuFrame.Visible
-end)
-
--- Fungsi buat Toggle Buttons
-local function makeToggle(text,onVar)
-    local btn=Instance.new("TextButton")
-    btn.Size=UDim2.new(0.9,0,0,30)
-    btn.Text=text
-    btn.Font=Enum.Font.SourceSans
-    btn.TextSize=18
-    btn.BackgroundColor3=Color3.fromRGB(60,60,60)
-    btn.TextColor3=Color3.fromRGB(255,255,255)
-    btn.Parent=menuFrame
-    local state = _G[onVar]
+local function makeToggle(txt,varName)
+    local btn=Instance.new("TextButton",menuFrame)
+    btn.Size=UDim2.new(0.9,0,0,30); btn.Text=txt; btn.Font=Enum.Font.SourceSans; btn.TextSize=16
+    btn.BackgroundColor3=Color3.fromRGB(60,60,60); btn.TextColor3=Color3.fromRGB(255,255,255)
+    local state=_G[varName]
     btn.MouseButton1Click:Connect(function()
-        state = not state
-        _G[onVar] = state
-        btn.BackgroundColor3 = state and Color3.fromRGB(40,180,90) or Color3.fromRGB(60,60,60)
+        state=not state; _G[varName]=state
+        btn.BackgroundColor3=state and Color3.fromRGB(40,180,90) or Color3.fromRGB(60,60,60)
+        if varName=="speedBoost" then applySpeedBoost() end
     end)
     return btn
 end
 
--- Toggle semua fitur
 makeToggle("🎯 Auto Nempel","active")
 makeToggle("💎 GodMode","godMode")
 makeToggle("☠ Instakill","instakill")
@@ -248,56 +164,34 @@ makeToggle("⚡ Auto Parry","autoParry")
 makeToggle("🚀 SpeedBoost","speedBoost")
 makeToggle("🛡 Proteksi","proteksi")
 
--- KillAll Button
-local killBtn=Instance.new("TextButton")
-killBtn.Size=UDim2.new(0.9,0,0,30)
-killBtn.Text="☠ KillAll"
-killBtn.Font=Enum.Font.SourceSans
-killBtn.TextSize=18
-killBtn.BackgroundColor3=Color3.fromRGB(100,100,150)
-killBtn.TextColor3=Color3.fromRGB(255,255,255)
-killBtn.Parent=menuFrame
+local killBtn=Instance.new("TextButton",menuFrame)
+killBtn.Size=UDim2.new(0.9,0,0,30); killBtn.Text="☠ KillAll"; killBtn.Font=Enum.Font.SourceSans; killBtn.TextSize=16
+killBtn.BackgroundColor3=Color3.fromRGB(100,100,150); killBtn.TextColor3=Color3.fromRGB(255,255,255)
 killBtn.MouseButton1Click:Connect(killAll)
 
--- SpeedBoost Slider
-local function makeSlider(name,text,minVal,maxVal,initVal)
+-- SpeedBoost slider
+local function makeSlider(name,txt,minVal,maxVal,initVal)
     local frame=Instance.new("Frame",menuFrame)
-    frame.Size=UDim2.new(0.9,0,0,40)
-    frame.BackgroundColor3=Color3.fromRGB(50,50,50)
-    local label=Instance.new("TextLabel",frame)
-    label.Size=UDim2.new(1,0,0,20)
-    label.Position=UDim2.new(0,5,0,0)
-    label.BackgroundTransparency=1
-    label.TextColor3=Color3.fromRGB(255,255,255)
-    label.Font=Enum.Font.SourceSans
-    label.TextSize=16
-    label.TextXAlignment=Enum.TextXAlignment.Left
-    label.Text=text.." : "..initVal
-    local barBg=Instance.new("Frame",frame)
-    barBg.Size=UDim2.new(1,-10,0,8)
-    barBg.Position=UDim2.new(0,5,0,28)
-    barBg.BackgroundColor3=Color3.fromRGB(100,100,100)
-    local barFill=Instance.new("Frame",barBg)
-    barFill.Size=UDim2.new((initVal-minVal)/(maxVal-minVal),0,1,0)
-    barFill.BackgroundColor3=Color3.fromRGB(40,180,90)
+    frame.Size=UDim2.new(0.9,0,0,40); frame.BackgroundColor3=Color3.fromRGB(40,40,40)
+    local label=Instance.new("TextLabel",frame); label.Size=UDim2.new(1,0,0,20); label.Position=UDim2.new(0,5,0,0)
+    label.BackgroundTransparency=1; label.TextColor3=Color3.fromRGB(255,255,255); label.Font=Enum.Font.SourceSans; label.TextSize=14
+    label.TextXAlignment=Enum.TextXAlignment.Left; label.Text=txt.." : "..initVal
+    local barBg=Instance.new("Frame",frame); barBg.Size=UDim2.new(1,-10,0,8); barBg.Position=UDim2.new(0,5,0,28); barBg.BackgroundColor3=Color3.fromRGB(100,100,100)
+    local barFill=Instance.new("Frame",barBg); barFill.Size=UDim2.new((initVal-minVal)/(maxVal-minVal),0,1,0); barFill.BackgroundColor3=Color3.fromRGB(40,180,90)
     local dragging=false
     barBg.InputBegan:Connect(function(input)
-        if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
-            dragging=true
-        end
+        if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then dragging=true end
     end)
     barBg.InputEnded:Connect(function(input)
-        if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
-            dragging=false
-        end
+        if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then dragging=false end
     end)
     UIS.InputChanged:Connect(function(input)
         if dragging and (input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch) then
-            local relativeX = math.clamp(input.Position.X - barBg.AbsolutePosition.X,0,barBg.AbsoluteSize.X)
-            local ratio = relativeX/barBg.AbsoluteSize.X
-            local value = math.floor(minVal + ratio*(maxVal-minVal))
+            local relativeX=math.clamp(input.Position.X-barBg.AbsolutePosition.X,0,barBg.AbsoluteSize.X)
+            local ratio=relativeX/barBg.AbsoluteSize.X
+            local value=math.floor(minVal+ratio*(maxVal-minVal))
             barFill.Size=UDim2.new(ratio,0,1,0)
-            label.Text=text.." : "..value
+            label.Text=txt.." : "..value
             boostedWalkSpeed=value
             if _G.speedBoost then applySpeedBoost() end
         end
@@ -305,5 +199,4 @@ local function makeSlider(name,text,minVal,maxVal,initVal)
 end
 
 makeSlider("SpeedSlider","SpeedBoost",20,100,boostedWalkSpeed)
-
-notify("✅ Script siap! Drag menu sesuka hati.")
+notify("✅ Compact UI siap! Drag menu sesuka hati.")
