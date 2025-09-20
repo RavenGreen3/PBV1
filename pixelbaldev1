@@ -3,6 +3,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UIS = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 
@@ -38,23 +39,47 @@ local screenGui = Instance.new("ScreenGui")
 screenGui.Parent = player:WaitForChild("PlayerGui")
 screenGui.ResetOnSpawn = false
 
-local function createButton(name, position, callback)
+-- Frame Menu
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0,200,0,350)
+frame.Position = UDim2.new(0,200,0,100)
+frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+frame.Active = true
+frame.Draggable = true
+frame.Visible = false
+frame.Parent = screenGui
+
+-- Tombol Show/Hide
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Size = UDim2.new(0,120,0,40)
+toggleBtn.Position = UDim2.new(0,20,0,20)
+toggleBtn.Text = "Show/Hide Menu"
+toggleBtn.BackgroundColor3 = Color3.fromRGB(70,70,70)
+toggleBtn.TextColor3 = Color3.fromRGB(255,255,255)
+toggleBtn.Parent = screenGui
+
+toggleBtn.MouseButton1Click:Connect(function()
+    frame.Visible = not frame.Visible
+end)
+
+-- Fungsi buat bikin tombol dalam Frame
+local function createButton(name, posY, callback)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0,150,0,50)
-    btn.Position = position
+    btn.Size = UDim2.new(0,150,0,40)
+    btn.Position = UDim2.new(0,25,0,posY)
     btn.Text = name
     btn.BackgroundColor3 = Color3.fromRGB(50,50,50)
     btn.TextColor3 = Color3.fromRGB(255,255,255)
-    btn.Parent = screenGui
+    btn.Parent = frame
     btn.MouseButton1Click:Connect(callback)
     return btn
 end
 
--- Buttons
-createButton("Auto Nempel", UDim2.new(0,20,0,50), function() active = not active end)
-createButton("Instakill", UDim2.new(0,20,0,110), function() instakill = not instakill end)
-createButton("Mob Vacuum", UDim2.new(0,20,0,170), function() vacuumActive = not vacuumActive end)
-createButton("Speed Boost", UDim2.new(0,20,0,230), function() 
+-- Buttons (isi menu)
+createButton("Auto Nempel", 20, function() active = not active end)
+createButton("Instakill", 70, function() instakill = not instakill end)
+createButton("Mob Vacuum", 120, function() vacuumActive = not vacuumActive end)
+createButton("Speed Boost", 170, function() 
     speedBoost = not speedBoost
     local char = player.Character
     if char then
@@ -70,8 +95,11 @@ createButton("Speed Boost", UDim2.new(0,20,0,230), function()
         end
     end
 end)
-createButton("Auto Parry", UDim2.new(0,20,0,290), function() autoParry = not autoParry end)
-createButton("Proteksi", UDim2.new(0,20,0,350), function() antiKnockback = not antiKnockback; antiStun = not antiStun end)
+createButton("Auto Parry", 220, function() autoParry = not autoParry end)
+createButton("Proteksi", 270, function() 
+    antiKnockback = not antiKnockback
+    antiStun = not antiStun 
+end)
 
 -- Helper functions
 local function getCharacterHRP()
