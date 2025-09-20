@@ -129,7 +129,7 @@ player.CharacterAdded:Connect(setupCharacter)
 if player.Character then setupCharacter() end
 
 -- ====== Compact UI ======
-local ScreenGui=Instance.new("ScreenGui",game.CoreGui)
+local ScreenGui=Instance.new("ScreenGui",game.PlayerGui)
 local menuToggle=Instance.new("TextButton",ScreenGui)
 menuToggle.Size=UDim2.new(0,90,0,30); menuToggle.Position=UDim2.new(0,10,0,10)
 menuToggle.Text="⚙ Menu"; menuToggle.Font=Enum.Font.SourceSansBold; menuToggle.TextSize=18
